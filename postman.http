@@ -1,0 +1,5 @@
+### prepare testdata.
+POST http://localhost:8080/api/reports/generate-test-data
+### generate report
+GET http://localhost:8080/api/reports/template
+
