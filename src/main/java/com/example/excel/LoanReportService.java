@@ -23,7 +23,7 @@ public class LoanReportService {
 
     private final LaonRepo laonRepo;
 
-    @Transactional
+
     public Map<String,Object> generateTestData(int count) {
 
         List<Loan> loanAll = new ArrayList<>();
@@ -31,8 +31,13 @@ public class LoanReportService {
             Loan loan = LoanTestDataBuilder.buildRandom();
             loan.setLoanId(null);
             loanAll.add(loan);
-            Loan save = laonRepo.save(loan);
-            log.info("saved loan: {}", save.getLoanId());
+            try {
+                Loan save = laonRepo.save(loan);
+                log.info("saved loan: {}", save.getLoanId());
+            } catch (Exception e) {
+                log.warn("ignore this: {} ",e.getMessage());
+            }
+
         });
         int size = laonRepo.findAll().size();
         log.info("Total loan records in DB: {}", size);
