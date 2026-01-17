@@ -9,11 +9,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -63,22 +65,42 @@ public class LoanReportService {
         }
 
         // Load template from resources
+        log.info(" report generation start with data size: {} ", mapList.size());
         InputStream templateInputStream = this.getClass()
                 .getClassLoader()
                 .getResourceAsStream(templatePath);
 
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
         try (ExcelWriter excelWriter = EasyExcel.write(outputPath)
                 .withTemplate(templateInputStream)
                 .build()) {
             WriteSheet writeSheet = EasyExcel.writerSheet().build();
-            //filling list data
-            excelWriter.fill(mapList, writeSheet);
+
             //filling single object data
             excelWriter.fill(Map.of("titleOfReport","This is Title of Single map object filling!! "), writeSheet);
 
+            //filling list data
+            //excelWriter.fill(mapList, writeSheet);
+
+            int totalRecords = mapList.size();
+            int batchSize = 100;
+            int processedRecords = 0;
+
+            for (int i = 0; i < totalRecords; i += batchSize) {
+                int end = Math.min(i + batchSize, totalRecords);
+                List<Map<String, Object>> batch = mapList.subList(i, end);
+
+                excelWriter.fill(batch, writeSheet);
+
+                processedRecords += batch.size();
+                double progress = (processedRecords * 100.0) / totalRecords;
+                System.out.printf("Progress: %.2f%% (%d/%d)%n", progress, processedRecords, totalRecords);
+            }
         } catch (Exception ex){
             log.error("Error writing Excel report: {}", ex.getMessage(), ex);
         }
-        log.info("Template report generated: {}", outputPath);
+        stopWatch.stop();
+        log.info("Template report generated: {} in time-milli: {} ", outputPath,stopWatch.getTotalTime(TimeUnit.MILLISECONDS));
     }
 }
